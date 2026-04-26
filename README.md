@@ -4,6 +4,8 @@ Snake OG is a playable Snake project with two versions:
 
 - A desktop game built with Python, pygame, pandas, and SQLite
 - A shareable browser version in [play.html](play.html)
+- file:///C:/Users/depic/snake%20game/play.html
+  
 
 ## Features
 
