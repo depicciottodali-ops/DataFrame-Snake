@@ -1,5 +1,4 @@
-# DataFrame-Snake
-A classic Snake game rebuilt with Python, pandas, pygame, and SQLite as a data analyst portfolio project.
+# Snake OG
 
 Snake OG is a playable Snake project with two versions:
 
