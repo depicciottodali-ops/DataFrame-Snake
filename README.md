@@ -3,15 +3,6 @@ DataFrame Snake is a GUI-based version of the classic Snake game built with Pyth
 - A desktop game built with Python, pygame, pandas, and SQLite
 - A shareable browser version in [play.html](play.html)  
 
-## Features
-
-- Start menu with player name entry
-- Blinking typing cursor in the name input box
-- Pixel-style snake movement on a square grid
-- Pause screen, game-over screen, and leaderboard screen
-- Local score and session saving in SQLite for the desktop version
-- Local browser leaderboard storage for the web version
-
 ## Project Files
 
 - `main.py` - desktop Snake game built with Python and pygame
