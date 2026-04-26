@@ -76,6 +76,13 @@ The desktop version creates and uses `snake_data.db` with these tables:
 
 - `scores`
 - `sessions`
+- 
+- <img width="2469" height="1670" alt="photo 1" src="https://github.com/user-attachments/assets/360683d5-7d93-43b2-b638-5ed0f0c6c011" />
+
+- <img width="2321" height="1690" alt="photo 2" src="https://github.com/user-attachments/assets/a11c8b34-a4ab-4fa1-aa08-b5955ca2c353" />
+
+-<img width="2232" height="1647" alt="photo 3" src="https://github.com/user-attachments/assets/43b225af-371b-4ede-906c-e95f3a313b6f" />
+
 
 
 
