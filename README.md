@@ -72,6 +72,8 @@ You can also upload the project to GitHub and publish [play.html](play.html) wit
 
 The desktop version creates and uses `snake_data.db` with these tables:
 
+
+
 - `scores`
 - `sessions`
 
