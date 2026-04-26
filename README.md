@@ -1,7 +1,5 @@
 # Snake OG
-
-Snake OG is a playable Snake project with two versions:
-
+DataFrame Snake is a GUI-based version of the classic Snake game built with Python. The project combines game development concepts with data-oriented programming by using pandas alongside pygame and SQLite. It was created as a portfolio project to demonstrate Python programming, event-driven logic, data handling, local database storage, and AI-assisted development using GitHub Copilot.
 - A desktop game built with Python, pygame, pandas, and SQLite
 - A shareable browser version in [play.html](play.html)  
 
