@@ -69,13 +69,6 @@ You can also upload the project to GitHub and publish [play.html](play.html) wit
 - `Esc`: Return to menu
 - `R`: Restart after game over
 
-## Logo Asset
-
-To show a logo in the desktop menu, place your image here:
-
-- `assets/Snake_OG-logo.jpg.jfif`
-
-If the file exists, the Python game loads it automatically.
 
 ## Data Storage
 
@@ -84,14 +77,5 @@ The desktop version creates and uses `snake_data.db` with these tables:
 - `scores`
 - `sessions`
 
-The browser version stores leaderboard data in local browser storage and does not sync with the SQLite database.
 
-## GitHub Sharing
 
-For GitHub, the most useful files to include are:
-
-- [README.md](README.md)
-- [PROJECT_REVIEW.md](PROJECT_REVIEW.md)
-- [play.html](play.html)
-
-That gives people a project description, a review summary, and a browser-playable version they can open quickly.
