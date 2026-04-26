@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Snake OG</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Courier New', Courier, monospace;
+      color: #eee;
+    }
+    h1 {
+      font-size: 2.4rem;
+      color: #00c800;
+      text-shadow: 2px 2px 0 #000;
+      margin-bottom: 6px;
+      letter-spacing: 4px;
+    }
+    #subtitle {
+      font-size: 0.8rem;
+      color: #888;
+      margin-bottom: 12px;
+      letter-spacing: 2px;
+    }
+    canvas {
+      display: block;
+      background: #000;
+      border: 2px solid #333;
+      image-rendering: pixelated;
+    }
+    #controls {
+      margin-top: 10px;
+      font-size: 0.75rem;
+      color: #666;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>SNAKE OG</h1>
+  <div id="subtitle">BROWSER EDITION</div>
+  <canvas id="c"></canvas>
+  <div id="controls">
+    ARROWS / WASD &nbsp;|&nbsp; ENTER start &nbsp;|&nbsp; P pause &nbsp;|&nbsp;
+    TAB leaderboard &nbsp;|&nbsp; ESC menu &nbsp;|&nbsp; R restart
+  </div>
+
+  <script>
+  (() => {
+    // ── constants ────────────────────────────────────────────────────────────
+    const CELL = 20, COLS = 30, ROWS = 24;
+    const W = COLS * CELL, H = ROWS * CELL;
+    const FPS = 10;
+
+    const C = {
+      BLACK:   '#000000',
+      WHITE:   '#ffffff',
+      GREEN:   '#00c800',
+      DKGREEN: '#008c00',
+      RED:     '#c80000',
+      GRAY:    '#282828',
+      LGRAY:   '#b4b4b4',
+      YELLOW:  '#e6c800',
+      CYAN:    '#00dcdc',
+      OVERLAY: 'rgba(0,0,0,0.68)',
+    };
+
+    const DIR = { UP:[0,-1], DOWN:[0,1], LEFT:[-1,0], RIGHT:[1,0] };
+    const OPP = { UP:'DOWN', DOWN:'UP', LEFT:'RIGHT', RIGHT:'LEFT' };
+
+    // ── canvas setup ─────────────────────────────────────────────────────────
+    const canvas = document.getElementById('c');
+    canvas.width  = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    // ── state ─────────────────────────────────────────────────────────────────
+    let state      = 'menu';   // menu | game | pause | gameover | leaderboard
+    let playerName = '';
+    let snake, dir, nextDir, food, score;
+    let cursorVisible = true, cursorTimer = 0;
+    let lastTime = 0, accumulator = 0;
+    const TICK = 1000 / FPS;
+
+    // ── localStorage leaderboard ──────────────────────────────────────────────
+    const LS_KEY = 'snakeog_leaderboard';
+
+    function loadBoard() {
+      try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; }
+      catch { return []; }
+    }
+
+    function saveBoard(entries) {
+      localStorage.setItem(LS_KEY, JSON.stringify(entries));
+    }
+
+    function recordScore(name, s) {
+      const board = loadBoard();
+      const existing = board.find(e => e.player === name);
+      if (existing) { if (s > existing.best) existing.best = s; }
+      else           { board.push({ player: name, best: s }); }
+      board.sort((a, b) => b.best - a.best);
+      saveBoard(board.slice(0, 15));
+    }
+
+    // ── game helpers ──────────────────────────────────────────────────────────
+    function randomFood() {
+      const occupied = new Set(snake.map(([x,y]) => `${x},${y}`));
+      let p;
+      do { p = [Math.floor(Math.random()*COLS), Math.floor(Math.random()*ROWS)]; }
+      while (occupied.has(`${p[0]},${p[1]}`));
+      return p;
+    }
+
+    function resetGame() {
+      const cx = Math.floor(COLS/2), cy = Math.floor(ROWS/2);
+      snake   = [[cx,cy],[cx-1,cy],[cx-2,cy]];
+      dir     = 'RIGHT';
+      nextDir = 'RIGHT';
+      food    = randomFood();
+      score   = 0;
+    }
+
+    // ── drawing helpers ───────────────────────────────────────────────────────
+    function cell(x, y, colour) {
+      const b = 2;
+      ctx.fillStyle = colour;
+      ctx.beginPath();
+      ctx.roundRect(x*CELL+b, y*CELL+b, CELL-b*2, CELL-b*2, 3);
+      ctx.fill();
+    }
+
+    function textCenter(text, font, colour, cy, shadow = true) {
+      ctx.font = font;
+      if (shadow) {
+        ctx.fillStyle = C.BLACK;
+        const sw = ctx.measureText(text).width;
+        ctx.fillText(text, W/2 - sw/2 + 2, cy + 2);
+      }
+      ctx.fillStyle = colour;
+      const tw = ctx.measureText(text).width;
+      ctx.fillText(text, W/2 - tw/2, cy);
+    }
+
+    function textLeft(text, font, colour, x, y) {
+      ctx.font = font;
+      ctx.fillStyle = colour;
+      ctx.fillText(text, x, y);
+    }
+
+    // ── screens ───────────────────────────────────────────────────────────────
+    function drawMenu() {
+      ctx.fillStyle = C.GRAY;
+      ctx.fillRect(0, 0, W, H);
+
+      textCenter('SNAKE OG', 'bold 52px monospace', C.GREEN, 80);
+
+      textCenter('Enter your name:', '22px monospace', C.LGRAY, 140);
+
+      // input box
+      const bw = 260, bh = 40, bx = W/2 - bw/2, by = 158;
+      ctx.fillStyle = C.WHITE;
+      ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 4); ctx.fill();
+      ctx.strokeStyle = C.CYAN; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 4); ctx.stroke();
+
+      const display = playerName + (cursorVisible ? '|' : ' ');
+      ctx.font = '22px monospace';
+      ctx.fillStyle = C.BLACK;
+      ctx.fillText(display, bx + 8, by + 27);
+
+      textCenter('ENTER  to start', '18px monospace', C.LGRAY, by + 70);
+      textCenter('TAB  leaderboard    Q  quit', '16px monospace', C.LGRAY, by + 94);
+    }
+
+    function drawGame() {
+      // grid
+      ctx.fillStyle = C.BLACK;
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = C.GRAY;
+      ctx.lineWidth = 0.5;
+      for (let c = 0; c < COLS; c++) {
+        for (let r = 0; r < ROWS; r++) {
+          ctx.strokeRect(c*CELL, r*CELL, CELL, CELL);
+        }
+      }
+
+      // food
+      cell(food[0], food[1], C.RED);
+
+      // snake
+      snake.forEach(([x,y], i) => cell(x, y, i === 0 ? C.DKGREEN : C.GREEN));
+
+      // HUD
+      ctx.font = '15px monospace';
+      ctx.fillStyle = C.LGRAY;
+      ctx.fillText(`  ${playerName}   Score: ${score}   P=pause  TAB=board  ESC=menu`, 4, 16);
+    }
+
+    function drawPause() {
+      drawGame();
+      ctx.fillStyle = C.OVERLAY;
+      ctx.fillRect(0, 0, W, H);
+      textCenter('PAUSED', 'bold 52px monospace', C.CYAN, H/2 - 20);
+      textCenter('P  resume    ESC  menu', '20px monospace', C.LGRAY, H/2 + 38);
+    }
+
+    function drawGameOver() {
+      drawGame();
+      ctx.fillStyle = C.OVERLAY;
+      ctx.fillRect(0, 0, W, H);
+      textCenter('GAME OVER', 'bold 52px monospace', C.RED, H/2 - 50);
+      textCenter(`${playerName}  scored  ${score}`, '26px monospace', C.YELLOW, H/2 + 4);
+      textCenter('R  restart    ESC  menu', '20px monospace', C.LGRAY, H/2 + 50);
+    }
+
+    function drawLeaderboard() {
+      ctx.fillStyle = C.GRAY;
+      ctx.fillRect(0, 0, W, H);
+      textCenter('LEADERBOARD', 'bold 44px monospace', C.YELLOW, 54);
+
+      const board = loadBoard();
+      if (board.length === 0) {
+        textCenter('No scores yet!', '26px monospace', C.LGRAY, H/2);
+      } else {
+        let ry = 100;
+        textLeft('#',      '22px monospace', C.LGRAY,  60, ry);
+        textLeft('Player', '22px monospace', C.LGRAY, 100, ry);
+        textLeft('Best',   '22px monospace', C.LGRAY, W - 100, ry);
+        ry += 34;
+        board.slice(0, 10).forEach((entry, i) => {
+          const col = i === 0 ? C.YELLOW : C.WHITE;
+          textLeft(String(i+1),        '22px monospace', col,  60, ry);
+          textLeft(entry.player,       '22px monospace', col, 100, ry);
+          textLeft(String(entry.best), '22px monospace', col, W - 100, ry);
+          ry += 30;
+          if (ry > H - 50) return;
+        });
+      }
+      textCenter('TAB / ESC  back', '18px monospace', C.LGRAY, H - 30);
+    }
+
+    // ── main loop ─────────────────────────────────────────────────────────────
+    function update(dt) {
+      cursorTimer += dt;
+      if (cursorTimer >= 500) { cursorTimer = 0; cursorVisible = !cursorVisible; }
+
+      if (state !== 'game') return;
+
+      accumulator += dt;
+      while (accumulator >= TICK) {
+        accumulator -= TICK;
+        tick();
+      }
+    }
+
+    function tick() {
+      dir = nextDir;
+      const [dx, dy] = DIR[dir];
+      const [hx, hy] = snake[0];
+      const nx = hx + dx, ny = hy + dy;
+
+      // wall
+      if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) {
+        endGame(); return;
+      }
+      // self
+      if (snake.some(([x,y]) => x === nx && y === ny)) {
+        endGame(); return;
+      }
+
+      snake.unshift([nx, ny]);
+      if (nx === food[0] && ny === food[1]) {
+        score += 10;
+        food = randomFood();
+      } else {
+        snake.pop();
+      }
+    }
+
+    function endGame() {
+      recordScore(playerName || 'Player', score);
+      state = 'gameover';
+    }
+
+    function draw() {
+      switch (state) {
+        case 'menu':        drawMenu();        break;
+        case 'game':        drawGame();        break;
+        case 'pause':       drawPause();       break;
+        case 'gameover':    drawGameOver();    break;
+        case 'leaderboard': drawLeaderboard(); break;
+      }
+    }
+
+    function loop(ts) {
+      const dt = ts - lastTime;
+      lastTime = ts;
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    // ── keyboard input ────────────────────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+      // prevent page scroll on arrow keys and Tab
+      if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Tab',' '].includes(e.key)) {
+        e.preventDefault();
+      }
+
+      if (state === 'menu') {
+        if (e.key === 'Enter') {
+          if (playerName.trim()) { resetGame(); state = 'game'; }
+        } else if (e.key === 'Tab') {
+          state = 'leaderboard';
+        } else if (e.key === 'q' || e.key === 'Q') {
+          // can't quit browser; show leaderboard instead
+          state = 'leaderboard';
+        } else if (e.key === 'Backspace') {
+          playerName = playerName.slice(0, -1);
+        } else if (e.key.length === 1 && playerName.length < 16) {
+          playerName += e.key;
+        }
+
+      } else if (state === 'game') {
+        if (e.key === 'p' || e.key === 'P') {
+          state = 'pause';
+        } else if (e.key === 'Escape') {
+          state = 'menu';
+        } else if (e.key === 'Tab') {
+          state = 'leaderboard';
+        } else if (e.key === 'ArrowUp'    || e.key === 'w' || e.key === 'W') {
+          if (dir !== 'DOWN')  nextDir = 'UP';
+        } else if (e.key === 'ArrowDown'  || e.key === 's' || e.key === 'S') {
+          if (dir !== 'UP')    nextDir = 'DOWN';
+        } else if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') {
+          if (dir !== 'RIGHT') nextDir = 'LEFT';
+        } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+          if (dir !== 'LEFT')  nextDir = 'RIGHT';
+        }
+
+      } else if (state === 'pause') {
+        if (e.key === 'p' || e.key === 'P') {
+          state = 'game';
+        } else if (e.key === 'Escape') {
+          state = 'menu';
+        }
+
+      } else if (state === 'gameover') {
+        if (e.key === 'r' || e.key === 'R') {
+          resetGame(); state = 'game';
+        } else if (e.key === 'Escape') {
+          state = 'menu';
+        }
+
+      } else if (state === 'leaderboard') {
+        if (e.key === 'Tab' || e.key === 'Escape') {
+          state = 'menu';
+        }
+      }
+    });
+
+    // ── start ─────────────────────────────────────────────────────────────────
+    requestAnimationFrame(ts => { lastTime = ts; requestAnimationFrame(loop); });
+  })();
+  </script>
+</body>
+</html>

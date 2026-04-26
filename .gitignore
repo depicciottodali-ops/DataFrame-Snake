@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Desktop database (created at runtime)
+snake_data.db
+
+# OS files
+.DS_Store
+Thumbs.db
